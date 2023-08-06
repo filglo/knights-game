@@ -9,9 +9,8 @@
 class GameMap {
 
 public:
-    GameMap();
+    GameMap(const char* map);
 
-    void Deserialize(const char* map);
     MapTile GetTileAtPos(Coords pos) const;
     const std::vector<Coords>& GetMinePositions() const;
     std::pair<int, int> GetDimensions() const;
@@ -23,6 +22,8 @@ public:
     static int Distance(const GameObject& object, Coords pos);
 
 private:
+    void Deserialize(const char* map);
+
     int width, height;
     std::vector<MapTile> mapTiles;
     std::vector<Coords> minePositions;

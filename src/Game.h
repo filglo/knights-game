@@ -9,8 +9,6 @@ class Game {
 public:
     Game(const char* map, const char* statusP1, const char* statusP2);
     GameWinState Turn();
-    void DeserializeStatus(const char* status, int playerID);
-    void DeserializeGold(const char* status, int playerID);
     void Attack(int unitID, int targetID);
     void Build(int unitID, ObjectType type);
     void Move(int unitID, Coords coords);
@@ -27,6 +25,8 @@ public:
     const GameMap& GetMap() const;
 
 private:
+    void DeserializeStatus(const char* status, int playerID);
+    void DeserializeGold(const char* status, int playerID);
     void PayForUnit(int amount, int playerID);
     GameObject* GetObjectWithID(int id);
 

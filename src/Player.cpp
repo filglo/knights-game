@@ -27,6 +27,7 @@ Player::Player(const char *programFilename, const char *mapFilename, const char 
 }
 
 void Player::Run() {
+    // Order units
     auto startTime = std::chrono::steady_clock::now();
     for(auto u : game.GetPlayerUnits(1)) {
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime);
@@ -40,10 +41,12 @@ void Player::Run() {
         }
     }
     
+    // Build units
     auto playerBase = game.GetPlayerBase(1);
     if(playerBase && !playerBase->IsBuilding() && game.GetPlayerGold(1) >= GameConstants::GetUnitPrice(ObjectType::ARCHER))
         commands.AddBuildCommand(playerBase->GetID(), ObjectType::ARCHER);
 
+    // Save commands
     std::ofstream commandsFile(commandsFilename);
     commandsFile << commands.Serialize();
     commandsFile.close();
@@ -51,6 +54,7 @@ void Player::Run() {
 
 std::vector<Coords> Player::FindPath(Coords start, Coords destination, int moveDistance, std::function<float(Coords pos)> costFunction)
 {
+    // TODO: Refactor this!
     auto map = game.GetMap();
     int width = map.GetDimensions().first;
     int height = map.GetDimensions().second;

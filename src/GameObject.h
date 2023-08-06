@@ -45,6 +45,7 @@ public:
     void Build(ObjectType buildType);
     void AddCallbackOnBuild(std::function<void(ObjectType, Coords coords, int)> f);
     void TakeTurn();
+    void MoveTo(Coords pos);
 
 private:
     std::function<void(ObjectType, Coords coords, int)> onBuild;

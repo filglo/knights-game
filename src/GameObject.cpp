@@ -92,7 +92,7 @@ void Base::Build(ObjectType buildType) {
     turnsToBuild = GameConstants::GetUnitTurnsToBuild(buildType);
 }
 
-void Base::AddCallbackOnBuild(std::function<void(ObjectType, Coords coords, int)> f) {
+void Base::AddCallbackOnBuild(std::function<void(ObjectType, Coords coords, int playerID)> f) {
     onBuild = f;
 }
 
@@ -107,9 +107,14 @@ void Base::TakeTurn() {
 
 }
 
+void Base::MoveTo(Coords pos) {
+    throw std::logic_error("Base cannot move");
+}
+
 Unit::Unit(ObjectType t, int id, Coords pos, int playerID, int durability)
     : GameObject(t, id, pos, playerID, durability)
     , hasAttacked(false)
+    , remainingMoves(GameConstants::GetUnitBaseMoves(t))
 {   
 }
 

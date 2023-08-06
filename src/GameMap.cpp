@@ -4,31 +4,38 @@
 #include <string>
 #include <sstream>
 
-GameMap::GameMap() {
-
+GameMap::GameMap(const char* map)
+    : width(0)
+    , height(0)
+{
+    Deserialize(map);
 }
 
 void GameMap::Deserialize(const char* map) {
     std::ifstream mapFile(map);
+    if(!mapFile.is_open())
+        throw std::invalid_argument("Cannot open map file.");
 
     int x = 0;
+    int h = 0;
     for(std::string line; getline(mapFile, line);) {
         for(auto c : line) {
             auto type = GameConstants::GetMapTileFromIdentifier(c);
             mapTiles.push_back(type);
             if(type == MapTile::MINE)
-                minePositions.push_back({x, height});
+                minePositions.push_back({x, h});
             x++;
         }
         x = 0;
-        height++;
+        h++;
     }
+    height = h;
     width = mapTiles.size()/height;
     mapFile.close();
 }
 
 MapTile GameMap::GetTileAtPos(Coords pos) const {
-    return mapTiles[pos.first+pos.second*height];
+    return mapTiles[pos.first+pos.second*width];
 }
 
 const std::vector<Coords>& GameMap::GetMinePositions() const {
@@ -48,7 +55,7 @@ Coords GameMap::ConvertIdxToCoords(int idx) const
 {
     int x, y;
     x = idx % width;
-    y = idx - x;
+    y = (idx - x)/width;
     return {x, y};
 }
 

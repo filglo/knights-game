@@ -10,8 +10,8 @@ Game::Game(const char* mapFilename, const char* statusP1, const char* statusP2)
     , turnNumber(0)
     , gameWinState(GameWinState::IN_PROGRESS)
     , nextUnitID(0)
+    , map(mapFilename)
 {
-    map.Deserialize(mapFilename);
     DeserializeStatus(statusP1, 1);
     DeserializeGold(statusP2, 2);
 }
@@ -186,9 +186,8 @@ bool Game::IsValidPlacement(const Unit *unit, Coords pos) const {
     if(!map.IsValidPlacement(pos))
         return false;
     int playerID = unit->GetPlayerID();
-    Coords unitPos = unit->GetPos();
     for(auto& o : objects) {
-        if(o->GetPos() == unitPos) {
+        if(o->GetPos() == pos) {
             if(o->GetPlayerID() == playerID)
                 return true;
             else
