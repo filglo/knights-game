@@ -4,8 +4,8 @@
 #include <sstream>
 
 GameObject::GameObject(ObjectType t, int id, Coords pos, int playerID, int durability)
-    : onDestroy(nullptr)
-    , coords(pos)
+    : coords(pos)
+    , onDestroy(nullptr)
     , type(t)
     , id(id)
     , playerID(playerID)
@@ -132,9 +132,11 @@ std::string Unit::Serialize(int playerID) const {
 }
 
 void Unit::MoveTo(Coords pos) {
-    remainingMoves -= GameMap::Distance(*this, pos);
-    if(remainingMoves < 0)
+    auto distance = GameMap::Distance(*this, pos);
+    if(remainingMoves < distance)
         throw std::logic_error("Unit doesn't have enough movement points.");
+    remainingMoves -= distance;
+    coords = pos;
 }
 
 void Unit::Attack() {

@@ -34,7 +34,7 @@ void Mediator::Run() {
         auto gameWinState = RunProgram(programFilename, mapFilename.c_str(), statusFilename, commandsFilename, timeLimit);
         if(ProcessGameWinState(gameWinState))
             return;
-
+        
         try {
             commands.Deserialize(commandsFilename);
             commands.ExecuteCommands(game);

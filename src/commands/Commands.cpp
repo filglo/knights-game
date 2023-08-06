@@ -13,6 +13,7 @@ Commands::Commands() {
 
 void Commands::Deserialize(const char* commandsFilename) {
     std::ifstream commandsFileS(commandsFilename);
+
     int unitID;
     char identifier;
 

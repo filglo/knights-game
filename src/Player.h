@@ -11,6 +11,8 @@ public:
     void Run();
 
 private:
+    void BuildUnits();
+    void GenerateHeatMaps();
     void TryToExecuteCommand(std::shared_ptr<Command>);
     std::vector<Coords> FindPath(Coords start, Coords destination, int moveDistance, std::function<float(Coords pos)> costFunction);
     bool CheckSurroundings(const Unit* unit);

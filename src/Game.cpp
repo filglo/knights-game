@@ -127,6 +127,8 @@ void Game::Attack(int unitID, int targetID) {
     auto attackedUnit = GetObjectWithID(targetID);
     if(thisUnit == nullptr || attackedUnit == nullptr)
         throw std::logic_error("Invalid attack parameter");
+    if(attackedUnit->IsDestroyed())
+        throw std::logic_error("Unit is already destroyed");
     thisUnit->Attack();
     auto damageValue = GameConstants::GetUnitDamageToTarget(thisUnit->GetType(), attackedUnit->GetType());
     attackedUnit->Damage(damageValue);
@@ -140,8 +142,12 @@ void Game::Build(int unitID, ObjectType type) {
 
 void Game::Move(int unitID, Coords coords) {
     auto object = GetObjectWithID(unitID);
+    if(object == nullptr)
+        throw std::logic_error("Invalid unit ID.");
     if(object->GetPos() == coords)
         throw std::logic_error("Cannot move 0 distance.");
+    if(!IsValidPlacement(dynamic_cast<const Unit*>(object), coords))
+        throw std::logic_error("Invalid unit placement");
     object->MoveTo(coords);
 }
 
@@ -211,9 +217,9 @@ int Game::CountObjectsForPlayer(int playerID) const {
 
 void Game::PayForUnit(int amount, int playerID) {
     long int& playerGold = playerID == 1 ? playerOneGold : playerTwoGold;
+    if(playerGold < amount)
+        throw std::invalid_argument("Player doesn't have enough gold.");
     playerGold -= amount;
-    if(playerGold < 0)
-        throw std::invalid_argument("Player has negative gold.");
 }
 
 int Game::GetTurnNumber() const {

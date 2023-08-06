@@ -6,6 +6,8 @@
 #include <queue>
 #include <chrono>
 
+#define DEBUG_OUTPUT 1
+
 enum class UnitState
 {
     DEFEND_BASE,
@@ -27,8 +29,10 @@ Player::Player(const char *programFilename, const char *mapFilename, const char 
 }
 
 void Player::Run() {
-    // Order units
     auto startTime = std::chrono::steady_clock::now();
+    GenerateHeatMaps();
+
+    // Order units
     for(auto u : game.GetPlayerUnits(1)) {
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime);
         // Leave some time for file io
@@ -36,26 +40,33 @@ void Player::Run() {
             break;
         if(!CheckSurroundings(u)) {
             auto path = FindPath(u->GetPos(), game.GetPlayerBase(2)->GetPos(), GameConstants::GetUnitBaseMoves(u->GetType()), [](Coords c){return 0.f;});
-            if(!path.empty())
+            if(!path.empty() && path.back() != u->GetPos())
                 TryToExecuteCommand(commands.AddMoveCommand(u->GetID(), path.back()));
         }
     }
     
-    // Build units
-    auto playerBase = game.GetPlayerBase(1);
-    if(playerBase && !playerBase->IsBuilding() && game.GetPlayerGold(1) >= GameConstants::GetUnitPrice(ObjectType::ARCHER))
-        commands.AddBuildCommand(playerBase->GetID(), ObjectType::ARCHER);
-
+    BuildUnits();
+    
     // Save commands
     std::ofstream commandsFile(commandsFilename);
     commandsFile << commands.Serialize();
     commandsFile.close();
 }
 
+void Player::BuildUnits() {
+    auto playerBase = game.GetPlayerBase(1);
+    if(playerBase && !playerBase->IsBuilding() && game.GetPlayerGold(1) >= GameConstants::GetUnitPrice(ObjectType::ARCHER))
+        commands.AddBuildCommand(playerBase->GetID(), ObjectType::ARCHER);
+}
+
+void Player::GenerateHeatMap() {
+}
+
 void Player::TryToExecuteCommand(std::shared_ptr<Command> command) {
     try {
         command->Execute(game);
     } catch(const std::logic_error& le) {
+        if(DEBUG_OUTPUT) std::cout << "Failed command: " << le.what() << '\n';
         commands.PopLastCommand();
     }
 }
@@ -116,10 +127,13 @@ std::vector<Coords> Player::FindPath(Coords start, Coords destination, int moveD
 bool Player::CheckSurroundings(const Unit *unit)
 {
     const GameObject* closestEnemy = nullptr;
-    int distanceToClosestEnemy = std::max(GameConstants::GetUnitBaseMoves(unit->GetType())+1, GameConstants::GetUnitRange(unit->GetType()));
+    int distanceToClosestEnemy = unit->GetMoves() - 1 + GameConstants::GetUnitRange(unit->GetType());
+    if(distanceToClosestEnemy <= 0)
+        return false;
     for(auto u : game.GetPlayerObjects(2)) {
-        if(GameMap::Distance(*u, unit->GetPos()) <= distanceToClosestEnemy) {
+        if(!u->IsDestroyed() && GameMap::Distance(*u, unit->GetPos()) <= distanceToClosestEnemy) {
             closestEnemy = u;
+            distanceToClosestEnemy = GameMap::Distance(*u, unit->GetPos());
         }
     }
     if(closestEnemy == nullptr)
@@ -133,10 +147,14 @@ bool Player::CheckSurroundings(const Unit *unit)
     if(unit->HasAttacked()) {
         MoveUnit(unit, closestEnemy->GetPos(), avoid);
     } else {
-        MoveUnit(unit, closestEnemy->GetPos(), engage);
         if(distanceToClosestEnemy <= GameConstants::GetUnitRange(unit->GetType())) {
             TryToExecuteCommand(commands.AddAttackCommand(unit->GetID(), closestEnemy->GetID()));
             MoveUnit(unit, closestEnemy->GetPos(), avoid);
+        } else {
+            MoveUnit(unit, closestEnemy->GetPos(), engage);
+            if(distanceToClosestEnemy <= GameConstants::GetUnitRange(unit->GetType())) {
+                TryToExecuteCommand(commands.AddAttackCommand(unit->GetID(), closestEnemy->GetID()));
+            }
         }
     }
     return true;
@@ -149,7 +167,9 @@ void Player::MoveUnit(const Unit *unit, Coords destination, std::function<float(
     Coords bestPos = unit->GetPos();
     for(int i = -remainingMoves; i <= remainingMoves; i++) {
         for(int j = std::abs(i)-remainingMoves; j <= remainingMoves - std::abs(i); j++) {
-            Coords pos = {0, 0};
+            Coords pos = unit->GetPos();
+            pos.first += i;
+            pos.second += j;
             if(game.IsValidPlacement(unit, pos)) {
                 float cost = GameMap::Distance(*unit, pos) + costFunction(pos, destination);
                 if(cost <= minimumCost) {

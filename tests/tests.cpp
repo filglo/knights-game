@@ -95,6 +95,7 @@ TEST_CASE("Testing Knight actions") {
     SUBCASE("Knight moves") {
         knight.MoveTo({3, 4});
         CHECK(knight.GetMoves() == 3);
+        CHECK(knight.GetPos() == Coords({3, 4}));
     }
     SUBCASE("Knight moves again") {
         knight.MoveTo({-2, 4});
