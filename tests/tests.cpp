@@ -6,6 +6,7 @@
 #include "commands/Attack.h"
 #include "commands/Move.h"
 #include "commands/Build.h"
+#include "commands/Commands.h"
 
 TEST_CASE("Testing map serialization") {
     bool exceptionThrown = false;
@@ -186,6 +187,19 @@ TEST_CASE("Testing Command serialization") {
     SUBCASE("Testing Build") {
         CHECK(Build(7, ObjectType::PIKEMAN).Serialize().compare("7 B P\n") == 0);
     }
+    SUBCASE("Testing Commands") {
+        Commands commands;
+        commands.AddAttackCommand(5, 6);
+        commands.AddMoveCommand(6, {1, 3});
+        commands.AddBuildCommand(7, ObjectType::PIKEMAN);
+        CHECK(commands.Serialize().compare("5 A 6\n6 M 1 3\n7 B P\n") == 0);
+    }
+}
+
+TEST_CASE("Testing Commands Deserialization") {
+    Commands commands;
+    commands.Deserialize("tests/commandsTest.txt");
+    CHECK(commands.Serialize().compare("2 M 0 1\n4 M 0 1\n1 A 8\n3 B A\n") == 0);
 }
 
 TEST_CASE("Testing Game 1") {

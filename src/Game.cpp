@@ -125,6 +125,8 @@ void Game::DeserializeGold(const char *status, int playerID) {
 void Game::Attack(int unitID, int targetID) {
     auto thisUnit = GetObjectWithID(unitID);
     auto attackedUnit = GetObjectWithID(targetID);
+    if(thisUnit == nullptr || attackedUnit == nullptr)
+        throw std::logic_error("Invalid attack parameter");
     thisUnit->Attack();
     auto damageValue = GameConstants::GetUnitDamageToTarget(thisUnit->GetType(), attackedUnit->GetType());
     attackedUnit->Damage(damageValue);
@@ -138,6 +140,8 @@ void Game::Build(int unitID, ObjectType type) {
 
 void Game::Move(int unitID, Coords coords) {
     auto object = GetObjectWithID(unitID);
+    if(object->GetPos() == coords)
+        throw std::logic_error("Cannot move 0 distance.");
     object->MoveTo(coords);
 }
 

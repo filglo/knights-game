@@ -72,3 +72,8 @@ void Commands::ExecuteCommands(Game& game) {
     }
     commands.clear();
 }
+
+void Commands::PopLastCommand() {
+    if(!commands.empty())
+        commands.pop_back();
+}

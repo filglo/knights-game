@@ -26,7 +26,7 @@ Mediator::Mediator(const char* mapFilename, const char* p1Filename, const char* 
 
 void Mediator::Run() {
     Commands commands;
-    for(int turn = 0; turn < 100; turn++) {
+    for(int turn = 0; turn < 2000; turn++) {
         auto playerID = GetCurrentPlayerID();
         const char* programFilename = playerID == 1 ? programP1Filename.c_str() : programP2Filename.c_str();
         const char* statusFilename = playerID == 1 ? statusP1Filename.c_str() : statusP2Filename.c_str();

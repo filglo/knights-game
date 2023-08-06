@@ -20,9 +20,9 @@ public:
     bool IsDestroyed() const;
     void Damage(int damage);
     void AddCallbackOnDestroy(std::function<void(int, int)> f);
-    virtual void TakeTurn() {};
-    virtual void MoveTo(Coords pos) {};
-    virtual void Attack() {};
+    virtual void TakeTurn() = 0;
+    virtual void MoveTo(Coords pos) = 0;
+    virtual void Attack() = 0;
 
 protected:
     Coords coords;
@@ -46,6 +46,7 @@ public:
     void AddCallbackOnBuild(std::function<void(ObjectType, Coords coords, int)> f);
     void TakeTurn();
     void MoveTo(Coords pos);
+    void Attack() {}
 
 private:
     std::function<void(ObjectType, Coords coords, int)> onBuild;

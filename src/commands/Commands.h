@@ -13,6 +13,7 @@ public:
     void Deserialize(const char* commandsFilename);
     std::string Serialize() const;
     void ExecuteCommands(Game& game);
+    void PopLastCommand();
     std::shared_ptr<Command> AddAttackCommand(int unit, int attackedUnit);
     std::shared_ptr<Command> AddBuildCommand(int unit, ObjectType object);
     std::shared_ptr<Command> AddMoveCommand(int unit, Coords c);

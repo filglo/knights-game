@@ -37,7 +37,7 @@ void Player::Run() {
         if(!CheckSurroundings(u)) {
             auto path = FindPath(u->GetPos(), game.GetPlayerBase(2)->GetPos(), GameConstants::GetUnitBaseMoves(u->GetType()), [](Coords c){return 0.f;});
             if(!path.empty())
-                commands.AddMoveCommand(u->GetID(), path.back())->Execute(game);
+                TryToExecuteCommand(commands.AddMoveCommand(u->GetID(), path.back()));
         }
     }
     
@@ -50,6 +50,14 @@ void Player::Run() {
     std::ofstream commandsFile(commandsFilename);
     commandsFile << commands.Serialize();
     commandsFile.close();
+}
+
+void Player::TryToExecuteCommand(std::shared_ptr<Command> command) {
+    try {
+        command->Execute(game);
+    } catch(const std::logic_error& le) {
+        commands.PopLastCommand();
+    }
 }
 
 std::vector<Coords> Player::FindPath(Coords start, Coords destination, int moveDistance, std::function<float(Coords pos)> costFunction)
@@ -108,7 +116,7 @@ std::vector<Coords> Player::FindPath(Coords start, Coords destination, int moveD
 bool Player::CheckSurroundings(const Unit *unit)
 {
     const GameObject* closestEnemy = nullptr;
-    int distanceToClosestEnemy = GameConstants::GetUnitBaseMoves(unit->GetType())+1;
+    int distanceToClosestEnemy = std::max(GameConstants::GetUnitBaseMoves(unit->GetType())+1, GameConstants::GetUnitRange(unit->GetType()));
     for(auto u : game.GetPlayerObjects(2)) {
         if(GameMap::Distance(*u, unit->GetPos()) <= distanceToClosestEnemy) {
             closestEnemy = u;
@@ -127,7 +135,7 @@ bool Player::CheckSurroundings(const Unit *unit)
     } else {
         MoveUnit(unit, closestEnemy->GetPos(), engage);
         if(distanceToClosestEnemy <= GameConstants::GetUnitRange(unit->GetType())) {
-            commands.AddAttackCommand(unit->GetID(), closestEnemy->GetID())->Execute(game);
+            TryToExecuteCommand(commands.AddAttackCommand(unit->GetID(), closestEnemy->GetID()));
             MoveUnit(unit, closestEnemy->GetPos(), avoid);
         }
     }
@@ -151,5 +159,5 @@ void Player::MoveUnit(const Unit *unit, Coords destination, std::function<float(
             }
         }
     }
-    commands.AddMoveCommand(unit->GetID(), bestPos)->Execute(game);
+    TryToExecuteCommand(commands.AddMoveCommand(unit->GetID(), bestPos));
 }

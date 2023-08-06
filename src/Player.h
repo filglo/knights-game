@@ -11,6 +11,7 @@ public:
     void Run();
 
 private:
+    void TryToExecuteCommand(std::shared_ptr<Command>);
     std::vector<Coords> FindPath(Coords start, Coords destination, int moveDistance, std::function<float(Coords pos)> costFunction);
     bool CheckSurroundings(const Unit* unit);
     void MoveUnit(const Unit* unit, Coords destination, std::function<float(Coords pos, Coords target)> costFunction);

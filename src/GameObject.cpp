@@ -4,7 +4,8 @@
 #include <sstream>
 
 GameObject::GameObject(ObjectType t, int id, Coords pos, int playerID, int durability)
-    : coords(pos)
+    : onDestroy(nullptr)
+    , coords(pos)
     , type(t)
     , id(id)
     , playerID(playerID)
@@ -40,7 +41,7 @@ void GameObject::Damage(int damage) {
     if(durability <= 0)
         throw std::logic_error("Destroyed unit cannot be damaged.");
     durability -= damage;
-    if(durability <= 0)
+    if(durability <= 0 && onDestroy)
         onDestroy(GetID(), GetPlayerID());
 }
 
