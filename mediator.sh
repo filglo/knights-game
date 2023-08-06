@@ -1,0 +1,1 @@
+./bin/KnightsMediator data/mapa.txt bin/Knights bin/Knights data/status.txt data/status2.txt data/rozkazy.txt data/rozkazy2.txt 5

@@ -1,0 +1,1 @@
+./bin/Knights data/mapa.txt data/status.txt data/rozkazy.txt
