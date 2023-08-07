@@ -40,7 +40,7 @@ void Player::Run() {
 void Player::BuildUnits() {
     if(!playerBase || !enemyBase || Timeout() || playerBase->IsBuilding())
         return;
-    std::vector<std::pair<int, ObjectType>> units = {{5, ObjectType::ARCHER}, {2, ObjectType::CATAPULT}, {1, ObjectType::KNIGHT},
+    std::vector<std::pair<int, ObjectType>> units = {{5, ObjectType::ARCHER}, {6, ObjectType::CATAPULT}, {0, ObjectType::KNIGHT},
                                                        {1, ObjectType::WORKER}, {0, ObjectType::PIKEMAN}, {-1, ObjectType::SWORDSMAN}};
     auto updateUnits = [&units](ObjectType type) {
         switch (type)
@@ -64,7 +64,8 @@ void Player::BuildUnits() {
                 break;
             case ObjectType::CATAPULT:
                 units[0].first += -6;
-                units[2].first += 2;
+                units[1].first += 3;
+                units[2].first += 3;
                 units[4].first += -3;
                 break;
             case ObjectType::KNIGHT:
@@ -143,6 +144,8 @@ void Player::GiveOrdersToUnits() {
 }
 
 void Player::GenerateHeatmaps() {
+    if(!playerBase || !enemyBase)
+        return;
     unitState = UnitState::ATTACK_BASE;
     auto map = game.GetMap();
     for(auto mPos : map.GetMinePositions()) {
@@ -158,13 +161,15 @@ void Player::GenerateHeatmaps() {
         if(Timeout()) return;
         if(u->GetType() == ObjectType::BASE) {
             UpdateHeatmap(unitHeatmap, -3.f, 6, u->GetPos());
-        } else if(u->GetType() == ObjectType::RAM) {
-            UpdateHeatmap(unitHeatmap, -2.f, 9, u->GetPos());
         } else {
             UpdateHeatmap(workerHeatmap, 2.5f, 6, u->GetPos());
             auto d = GameMap::Distance(*u, playerBase->GetPos());
-            if(d > 0)
-                UpdateHeatmap(unitHeatmap, -40.f/d + 4.f, 9, u->GetPos());
+            float value = d > 0 ? -40.f/d + 4.f : -40.f;
+            if(u->GetType() == ObjectType::CATAPULT)
+                value += 10.f;
+            if(u->GetType() == ObjectType::RAM)
+                value += -3.f;
+            UpdateHeatmap(unitHeatmap, value, 9, u->GetPos());
             if(d < std::min(std::min(15, map.GetDimensions().first), map.GetDimensions().second))
                 unitState = UnitState::DEFEND_BASE;
         }
@@ -252,8 +257,7 @@ std::vector<Coords> Player::FindPath(Coords start, Coords destination, int moveD
 bool Player::CheckSurroundings(const Unit *unit)
 {
     const GameObject* closestEnemy = nullptr;
-    int baseDefendDistance = unitState == UnitState::DEFEND_BASE && GameMap::Distance(unit->GetPos(), playerBase->GetPos()) < 10 ? 8 : 0;
-    int distanceToClosestEnemy = std::max(unit->GetMoves() - 1 + GameConstants::GetUnitRange(unit->GetType()), baseDefendDistance);
+    int distanceToClosestEnemy = unit->GetMoves() - 1 + GameConstants::GetUnitRange(unit->GetType());
     if(distanceToClosestEnemy <= 0)
         return true;
     for(auto u : game.GetPlayerObjects(2)) {
