@@ -1,3 +1,7 @@
 .vscode
 bin
 build
+data/rozkazy.txt
+data/rozkazy2.txt
+data/status.txt
+data/status2.txt

@@ -69,25 +69,31 @@ GameWinState Mediator::RunProgram(const char* program, const char* map, const ch
     auto startTime = std::chrono::steady_clock::now();
     int pid = fork();
     std::string timeStr = std::to_string(timeLimit);
-    if(pid == 0)
+    if(pid == 0) {
         if(execl(program, program, map, status, commands, timeStr.c_str(), (char*)0)) {
             char buffer[256];
             char* errorMsg = strerror_r(errno, buffer, 256);
             std::cerr << errorMsg << std::endl;
             _exit(EXIT_FAILURE);
         }
-    while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime).count() <= timeLimit*1000)
-    {
-        int r = waitpid(pid, &st, WNOHANG);
-        if(r == -1 || (r > 0 && !WIFEXITED(st))) {
-            return GetCurrentPlayerID() == 1 ? GameWinState::PLAYER1_ERROR : GameWinState::PLAYER2_ERROR;
-        } else if(r > 0 && WIFEXITED(st)) {
-            if(WEXITSTATUS(st) == EXIT_FAILURE)
+    } else if(pid > 0) {
+        while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime).count() <= timeLimit*1000)
+        {
+            int r = waitpid(pid, &st, WNOHANG);
+            if(r == -1 || (r > 0 && !WIFEXITED(st))) {
                 return GetCurrentPlayerID() == 1 ? GameWinState::PLAYER1_ERROR : GameWinState::PLAYER2_ERROR;
-            return GameWinState::IN_PROGRESS;
+            } else if(r > 0 && WIFEXITED(st)) {
+                if(WEXITSTATUS(st) == EXIT_FAILURE)
+                    return GetCurrentPlayerID() == 1 ? GameWinState::PLAYER1_ERROR : GameWinState::PLAYER2_ERROR;
+                return GameWinState::IN_PROGRESS;
+            }
         }
+        kill(pid, SIGTERM);
+        return GetCurrentPlayerID() == 1 ? GameWinState::PLAYER1_TIMEOUT : GameWinState::PLAYER2_TIMEOUT;
+    } else {
+        std::cerr << "Failed to create player process." << std::endl;
     }
-    return GetCurrentPlayerID() == 1 ? GameWinState::PLAYER1_TIMEOUT : GameWinState::PLAYER2_TIMEOUT;
+    return GetCurrentPlayerID() == 1 ? GameWinState::PLAYER1_ERROR : GameWinState::PLAYER2_ERROR;
 }
 
 bool Mediator::ProcessGameWinState(GameWinState gameWinState) const {
