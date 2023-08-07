@@ -5,7 +5,7 @@
 #include <fstream>
 #include <queue>
 
-#define DEBUG_OUTPUT 1
+#define DEBUG_OUTPUT 0
 
 Player::Player(const char *programFilename, const char *mapFilename, const char *statusFilename, const char *commandsFilename, int timeLimit)
     : timeLimit(timeLimit)
@@ -77,9 +77,11 @@ void Player::BuildUnits() {
                 break;
         }
     };
+    if(game.GetPlayerGold(1) > 3000)
+        units[3].first += -6;
     if(game.GetPlayerGold(1) > 2000)
         units[1].first += 1;
-    if(game.GetPlayerGold(1) < 2000)
+    if(game.GetPlayerGold(1) < 1000)
         units[3].first += 1;
     units[3].first += int(GameMap::Distance(playerBase->GetPos(), enemyBase->GetPos())/7);
     if(game.GetMap().GetMinePositions().empty())
@@ -91,6 +93,12 @@ void Player::BuildUnits() {
     for(auto u : game.GetPlayerUnits(2))
         updateUnits(u->GetType());
 
+    int workerCount = 0;
+    for(auto u : game.GetPlayerUnits(1))
+        if(u->GetType() == ObjectType::WORKER)
+            workerCount++;
+    units[3].first += 2 - workerCount;
+    
     std::sort(units.begin(), units.end(), [](auto p1, auto p2) { return p1.first > p2.first; });
     for(auto p : units) {
         if(!playerBase->IsBuilding() && game.GetPlayerGold(1) >= GameConstants::GetUnitPrice(p.second)) {
@@ -144,6 +152,8 @@ void Player::GenerateHeatmaps() {
         if(Timeout()) return;
         if(u->GetType() == ObjectType::BASE) {
             UpdateHeatmap(unitHeatmap, -3.f, 6, u->GetPos());
+        } else if(u->GetType() == ObjectType::RAM) {
+            UpdateHeatmap(unitHeatmap, -2.f, 9, u->GetPos());
         } else {
             UpdateHeatmap(workerHeatmap, 2.5f, 6, u->GetPos());
             auto d = GameMap::Distance(*u, playerBase->GetPos());
@@ -298,6 +308,6 @@ bool Player::Timeout() const
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime);
     // Leaving time for file io and finishing program execution
     if(duration.count() >= timeLimit*1000 - 500)
-        return true;
+        return false;
     return false;
 }

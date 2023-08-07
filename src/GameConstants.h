@@ -26,10 +26,10 @@ namespace GameConstants {
         {ObjectType::RAM, 10}, {ObjectType::CATAPULT, 10}, {ObjectType::WORKER, 15}}}},
     {ObjectType::PIKEMAN, {'P', 50, 3, 200, 2, 2, {{ObjectType::BASE, 10}, {ObjectType::KNIGHT, 35}, {ObjectType::SWORDSMAN, 15}, {ObjectType::ARCHER, 15}, {ObjectType::PIKEMAN, 15},
         {ObjectType::RAM, 15}, {ObjectType::CATAPULT, 10}, {ObjectType::WORKER, 15}}}},
-    {ObjectType::RAM, {'R', 90, 4, 500, 2, 1, {{ObjectType::BASE, 50}, {ObjectType::KNIGHT, 40}, {ObjectType::SWORDSMAN, 40}, {ObjectType::ARCHER, 40}, {ObjectType::PIKEMAN, 40},
-        {ObjectType::RAM, 40}, {ObjectType::CATAPULT, 40}, {ObjectType::WORKER, 40}}}},
-    {ObjectType::CATAPULT, {'C', 50, 6, 800, 2, 7, {{ObjectType::BASE, 50}, {ObjectType::KNIGHT, 10}, {ObjectType::SWORDSMAN, 10}, {ObjectType::ARCHER, 10}, {ObjectType::PIKEMAN, 10},
+    {ObjectType::RAM, {'R', 90, 4, 500, 2, 1, {{ObjectType::BASE, 50}, {ObjectType::KNIGHT, 10}, {ObjectType::SWORDSMAN, 10}, {ObjectType::ARCHER, 10}, {ObjectType::PIKEMAN, 10},
         {ObjectType::RAM, 10}, {ObjectType::CATAPULT, 10}, {ObjectType::WORKER, 10}}}},
+    {ObjectType::CATAPULT, {'C', 50, 6, 800, 2, 7, {{ObjectType::BASE, 50}, {ObjectType::KNIGHT, 40}, {ObjectType::SWORDSMAN, 40}, {ObjectType::ARCHER, 40}, {ObjectType::PIKEMAN, 10},
+        {ObjectType::RAM, 40}, {ObjectType::CATAPULT, 40}, {ObjectType::WORKER, 40}}}},
     {ObjectType::WORKER, {'W', 20, 2, 100, 2, 1, {{ObjectType::BASE, 1}, {ObjectType::KNIGHT, 5}, {ObjectType::SWORDSMAN, 5}, {ObjectType::ARCHER, 5}, {ObjectType::PIKEMAN, 5},
         {ObjectType::RAM, 5}, {ObjectType::CATAPULT, 5}, {ObjectType::WORKER, 5}}}}
     };
