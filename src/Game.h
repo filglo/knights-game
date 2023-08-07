@@ -20,6 +20,7 @@ public:
     std::vector<const GameObject*> GetPlayerObjects(int playerID) const;
     bool IsValidPlacement(const Unit* unit, Coords coords) const;
     int CountObjectsForPlayer(int playerID) const;
+    int CountObjects() const;
     int GetTurnNumber() const;
     int GetPlayerGold(int playerID) const;
     const GameMap& GetMap() const;

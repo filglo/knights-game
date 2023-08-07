@@ -215,6 +215,10 @@ int Game::CountObjectsForPlayer(int playerID) const {
     return count;
 }
 
+int Game::CountObjects() const {
+    return objects.size();
+}
+
 void Game::PayForUnit(int amount, int playerID) {
     long int& playerGold = playerID == 1 ? playerOneGold : playerTwoGold;
     if(playerGold < amount)
