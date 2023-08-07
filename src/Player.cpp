@@ -4,7 +4,6 @@
 #include <iostream>
 #include <fstream>
 #include <queue>
-#include <chrono>
 
 #define DEBUG_OUTPUT 1
 
@@ -15,46 +14,21 @@ Player::Player(const char *programFilename, const char *mapFilename, const char 
     , commandsFilename(commandsFilename)
     , programFilename(programFilename)
     , game(mapFilename, statusFilename, statusFilename)
+    , unitState(UnitState::ATTACK_BASE)
+    , startTime(std::chrono::steady_clock::now())
 {
     auto dims = game.GetMap().GetDimensions();
     workerHeatmap.resize(dims.first*dims.second, 0.f);
     unitHeatmap.resize(dims.first*dims.second, 0.f);
+    playerBase = game.GetPlayerBase(1);
+    enemyBase = game.GetPlayerBase(2);
 }
 
 void Player::Run() {
-    auto startTime = std::chrono::steady_clock::now();
-    if(game.CountObjects() < 15)
-        GenerateHeatmaps();
-
-    // Order units
-    for(auto u : game.GetPlayerUnits(1)) {
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime);
-        // Leave some time for file io
-        if(duration.count() >= timeLimit*1000 - 500)
-            break;
-        if(!CheckSurroundings(u)) {
-            std::vector<Coords> path;
-            if(u->GetType() == ObjectType::WORKER) {
-                int minDist = 2000;
-                Coords bestMine = game.GetPlayerBase(2)->GetPos();
-                for(auto mPos : game.GetMap().GetMinePositions()) {
-                    if(GameMap::Distance(u->GetPos(), mPos) < minDist) {
-                        minDist = GameMap::Distance(u->GetPos(), mPos);
-                        bestMine = mPos;
-                    }
-                }
-                auto costFunction = [this](int idx){return this->workerHeatmap[idx];};
-                path = FindPath(u->GetPos(), bestMine, GameConstants::GetUnitBaseMoves(u->GetType()), costFunction);
-            } else {
-                Coords target = unitState == UnitState::ATTACK_BASE ? game.GetPlayerBase(2)->GetPos() : game.GetPlayerBase(1)->GetPos();
-                auto costFunction = [this](int idx){return this->unitHeatmap[idx];};
-                path = FindPath(u->GetPos(), target, GameConstants::GetUnitBaseMoves(u->GetType()), costFunction);
-            }
-            if(!path.empty() && path.back() != u->GetPos())
-                TryToExecuteCommand(commands.AddMoveCommand(u->GetID(), path.back()));
-        }
-    }
-    
+    if(!playerBase || !enemyBase)
+        return;
+    GenerateHeatmaps();
+    GiveOrdersToUnits();
     BuildUnits();
     
     // Save commands
@@ -64,9 +38,7 @@ void Player::Run() {
 }
 
 void Player::BuildUnits() {
-    auto playerBase = game.GetPlayerBase(1);
-    auto enemyBase = game.GetPlayerBase(2);
-    if(!playerBase || !enemyBase)
+    if(!playerBase || !enemyBase || Timeout())
         return;
     std::vector<std::pair<int, ObjectType>> units = {{5, ObjectType::ARCHER}, {2, ObjectType::CATAPULT}, {1, ObjectType::KNIGHT},
                                                        {1, ObjectType::WORKER}, {0, ObjectType::PIKEMAN}};
@@ -128,24 +100,55 @@ void Player::BuildUnits() {
     }
 }
 
+void Player::GiveOrdersToUnits() {
+    for(auto u : game.GetPlayerUnits(1)) {
+        if(Timeout())
+            break;
+        if(!CheckSurroundings(u)) {
+            std::vector<Coords> path;
+            if(u->GetType() == ObjectType::WORKER) {
+                int minDist = 2000;
+                Coords bestMine = enemyBase->GetPos();
+                for(auto mPos : game.GetMap().GetMinePositions()) {
+                    if(GameMap::Distance(u->GetPos(), mPos) < minDist) {
+                        minDist = GameMap::Distance(u->GetPos(), mPos);
+                        bestMine = mPos;
+                    }
+                }
+                auto costFunction = [this](int idx){return this->workerHeatmap[idx];};
+                path = FindPath(u->GetPos(), bestMine, GameConstants::GetUnitBaseMoves(u->GetType()), costFunction);
+            } else {
+                Coords target = unitState == UnitState::ATTACK_BASE ? enemyBase->GetPos() : playerBase->GetPos();
+                auto costFunction = [this](int idx){return this->unitHeatmap[idx];};
+                path = FindPath(u->GetPos(), target, GameConstants::GetUnitBaseMoves(u->GetType()), costFunction);
+            }
+            if(!path.empty() && path.back() != u->GetPos())
+                TryToExecuteCommand(commands.AddMoveCommand(u->GetID(), path.back()));
+        }
+    }
+}
+
 void Player::GenerateHeatmaps() {
     unitState = UnitState::ATTACK_BASE;
     auto map = game.GetMap();
     for(auto mPos : map.GetMinePositions()) {
-        UpdateHeatmap(workerHeatmap, 2.5f, 5, mPos);
+        if(Timeout()) return;
+        UpdateHeatmap(workerHeatmap, -2.5f, 5, mPos);
     }
     for(auto u : game.GetPlayerObjects(1)) {
-        UpdateHeatmap(unitHeatmap, 2.5f, 6, u->GetPos());
-        UpdateHeatmap(workerHeatmap, 2.5f, 3, u->GetPos());
+        if(Timeout()) return;
+        UpdateHeatmap(unitHeatmap, -2.5f, 6, u->GetPos());
+        UpdateHeatmap(workerHeatmap, -2.5f, 3, u->GetPos());
     }
     for(auto u : game.GetPlayerObjects(2)) {
+        if(Timeout()) return;
         if(u->GetType() == ObjectType::BASE) {
-            UpdateHeatmap(unitHeatmap, 3.f, 6, u->GetPos());
+            UpdateHeatmap(unitHeatmap, -3.f, 6, u->GetPos());
         } else {
-            UpdateHeatmap(workerHeatmap, -2.5f, 6, u->GetPos());
-            auto d = GameMap::Distance(*u, game.GetPlayerBase(1)->GetPos());
+            UpdateHeatmap(workerHeatmap, 2.5f, 6, u->GetPos());
+            auto d = GameMap::Distance(*u, playerBase->GetPos());
             if(d > 0)
-                UpdateHeatmap(unitHeatmap, 40.f/d - 4.f, 9, u->GetPos());
+                UpdateHeatmap(unitHeatmap, -40.f/d + 4.f, 9, u->GetPos());
             if(d < std::min(std::min(15, map.GetDimensions().first), map.GetDimensions().second))
                 unitState = UnitState::DEFEND_BASE;
         }
@@ -188,7 +191,7 @@ std::vector<Coords> Player::FindPath(Coords start, Coords destination, int moveD
     auto startIdx = map.ConvertCoordsToIdx(start);
     costs[startIdx].second = startIdx;
     nodesToCheck.push({0.f, startIdx});
-    while(!foundDestination && nodesToCheck.size() > 0) {
+    while(!foundDestination && nodesToCheck.size() > 0 && !Timeout()) {
         auto currentNode = nodesToCheck.top();
         nodesToCheck.pop();
         auto c = map.ConvertIdxToCoords(currentNode.second);
@@ -204,7 +207,7 @@ std::vector<Coords> Player::FindPath(Coords start, Coords destination, int moveD
                     if(map.IsValidPlacement({c.first+i, c.second+j})) {
 
                         float cost = GameMap::Distance(c, {c.first+i, c.second+j})
-                                   + costs[currentNode.second].first + costFunction(idxToCheck) + 0.1f;
+                                   + costs[currentNode.second].first + std::max(0.1f, costFunction(idxToCheck) + 5.f);
                         float heur = GameMap::Distance({c.first+i, c.second+j}, destination);
                         
                         if(cost < costs[idxToCheck].first || costs[idxToCheck].second == -1) {
@@ -220,7 +223,9 @@ std::vector<Coords> Player::FindPath(Coords start, Coords destination, int moveD
     std::vector<Coords> path;
     if(foundDestination) {
         int lastIdx = map.ConvertCoordsToIdx(destination);
-        while(lastIdx != startIdx) {
+        int loopIdx = 0;
+        while(lastIdx != startIdx && loopIdx < 1000) {
+            loopIdx++;
             path.push_back(map.ConvertIdxToCoords(lastIdx));
             lastIdx = costs[lastIdx].second;
         }
@@ -231,10 +236,12 @@ std::vector<Coords> Player::FindPath(Coords start, Coords destination, int moveD
 bool Player::CheckSurroundings(const Unit *unit)
 {
     const GameObject* closestEnemy = nullptr;
-    int distanceToClosestEnemy = unit->GetMoves() - 1 + GameConstants::GetUnitRange(unit->GetType()) + (unitState == UnitState::DEFEND_BASE ? 5 : 0);
+    int baseDefendDistance = unitState == UnitState::DEFEND_BASE && GameMap::Distance(unit->GetPos(), playerBase->GetPos()) < 10 ? 8 : 0;
+    int distanceToClosestEnemy = std::max(unit->GetMoves() - 1 + GameConstants::GetUnitRange(unit->GetType()), baseDefendDistance);
     if(distanceToClosestEnemy <= 0)
-        return false;
+        return true;
     for(auto u : game.GetPlayerObjects(2)) {
+        if(Timeout()) return false;
         if(!u->IsDestroyed() && GameMap::Distance(*u, unit->GetPos()) <= distanceToClosestEnemy) {
             closestEnemy = u;
             distanceToClosestEnemy = GameMap::Distance(*u, unit->GetPos());
@@ -284,4 +291,13 @@ void Player::MoveUnit(const Unit *unit, Coords destination, std::function<float(
         }
     }
     TryToExecuteCommand(commands.AddMoveCommand(unit->GetID(), bestPos));
+}
+
+bool Player::Timeout() const
+{
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime);
+    // Leaving time for file io and finishing program execution
+    if(duration.count() >= timeLimit*1000 - 500)
+        return true;
+    return false;
 }

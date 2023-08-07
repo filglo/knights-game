@@ -3,6 +3,7 @@
 #include "Game.h"
 #include "commands/Commands.h"
 #include <string>
+#include <chrono>
 
 enum class UnitState
 {
@@ -18,12 +19,14 @@ public:
 
 private:
     void BuildUnits();
+    void GiveOrdersToUnits();
     void GenerateHeatmaps();
     void UpdateHeatmap(std::vector<float>& heatmap, float value, int distance, Coords pos);
     void TryToExecuteCommand(std::shared_ptr<Command>);
     std::vector<Coords> FindPath(Coords start, Coords destination, int moveDistance, std::function<float(int idx)> costFunction);
     bool CheckSurroundings(const Unit* unit);
     void MoveUnit(const Unit* unit, Coords destination, std::function<float(Coords pos, Coords target)> costFunction);
+    bool Timeout() const;
 
     int timeLimit;
     std::string mapFilename;
@@ -35,4 +38,7 @@ private:
     std::vector<float> workerHeatmap;
     std::vector<float> unitHeatmap;
     UnitState unitState;
+    const Base* playerBase;
+    const Base* enemyBase;
+    std::chrono::steady_clock::time_point startTime;
 };
