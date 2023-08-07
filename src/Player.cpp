@@ -38,13 +38,19 @@ void Player::Run() {
 }
 
 void Player::BuildUnits() {
-    if(!playerBase || !enemyBase || Timeout())
+    if(!playerBase || !enemyBase || Timeout() || playerBase->IsBuilding())
         return;
     std::vector<std::pair<int, ObjectType>> units = {{5, ObjectType::ARCHER}, {2, ObjectType::CATAPULT}, {1, ObjectType::KNIGHT},
-                                                       {1, ObjectType::WORKER}, {0, ObjectType::PIKEMAN}};
+                                                       {1, ObjectType::WORKER}, {0, ObjectType::PIKEMAN}, {-1, ObjectType::SWORDSMAN}};
     auto updateUnits = [&units](ObjectType type) {
         switch (type)
         {
+            case ObjectType::RAM:
+                units[0].first += -1;
+                units[1].first += 2;
+                units[2].first += 6;
+                units[4].first += -1;
+                break;
             case ObjectType::ARCHER:
                 units[1].first += 5;
                 units[2].first += -1;
@@ -101,7 +107,7 @@ void Player::BuildUnits() {
     
     std::sort(units.begin(), units.end(), [](auto p1, auto p2) { return p1.first > p2.first; });
     for(auto p : units) {
-        if(!playerBase->IsBuilding() && game.GetPlayerGold(1) >= GameConstants::GetUnitPrice(p.second)) {
+        if(game.GetPlayerGold(1) >= GameConstants::GetUnitPrice(p.second)) {
             commands.AddBuildCommand(playerBase->GetID(), p.second);
             break;
         }
