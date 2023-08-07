@@ -40,7 +40,7 @@ void Player::Run() {
 void Player::BuildUnits() {
     if(!playerBase || !enemyBase || Timeout() || playerBase->IsBuilding())
         return;
-    std::vector<std::pair<int, ObjectType>> units = {{5, ObjectType::ARCHER}, {6, ObjectType::CATAPULT}, {0, ObjectType::KNIGHT},
+    std::vector<std::pair<int, ObjectType>> units = {{5, ObjectType::ARCHER}, {3, ObjectType::CATAPULT}, {0, ObjectType::KNIGHT},
                                                        {1, ObjectType::WORKER}, {0, ObjectType::PIKEMAN}, {-1, ObjectType::SWORDSMAN}};
     auto updateUnits = [&units](ObjectType type) {
         switch (type)
@@ -87,7 +87,7 @@ void Player::BuildUnits() {
     if(game.GetPlayerGold(1) > 3000)
         units[3].first += -6;
     if(game.GetPlayerGold(1) > 2000)
-        units[1].first += 1;
+        units[1].first += 2;
     if(game.GetPlayerGold(1) < 1000)
         units[3].first += 1;
     units[3].first += int(GameMap::Distance(playerBase->GetPos(), enemyBase->GetPos())/7);
@@ -150,12 +150,19 @@ void Player::GenerateHeatmaps() {
     auto map = game.GetMap();
     for(auto mPos : map.GetMinePositions()) {
         if(Timeout()) return;
-        UpdateHeatmap(workerHeatmap, -2.5f, 5, mPos);
+        UpdateHeatmap(workerHeatmap, -5.0f, 5, mPos);
     }
     for(auto u : game.GetPlayerObjects(1)) {
         if(Timeout()) return;
-        UpdateHeatmap(unitHeatmap, -2.5f, 6, u->GetPos());
-        UpdateHeatmap(workerHeatmap, -2.5f, 3, u->GetPos());
+        if(u->GetType() == ObjectType::BASE) {
+            UpdateHeatmap(unitHeatmap, -5.f, 7, u->GetPos());
+            UpdateHeatmap(workerHeatmap, -2.5f, 7, u->GetPos());
+        }
+        else {
+            int friendRangeRadius = GameConstants::GetUnitBaseMoves(u->GetType());
+            UpdateHeatmap(unitHeatmap, -GameConstants::GetUnitPrice(u->GetType()) / 50.f, friendRangeRadius, u->GetPos());
+            UpdateHeatmap(workerHeatmap, -2.5f, friendRangeRadius, u->GetPos());
+        }
     }
     for(auto u : game.GetPlayerObjects(2)) {
         if(Timeout()) return;
@@ -164,12 +171,15 @@ void Player::GenerateHeatmaps() {
         } else {
             UpdateHeatmap(workerHeatmap, 2.5f, 6, u->GetPos());
             auto d = GameMap::Distance(*u, playerBase->GetPos());
-            float value = d > 0 ? -40.f/d + 4.f : -40.f;
-            if(u->GetType() == ObjectType::CATAPULT)
-                value += 10.f;
-            if(u->GetType() == ObjectType::RAM)
+            float value = d - 20.f;
+            if(u->GetType() == ObjectType::WORKER)
                 value += -3.f;
-            UpdateHeatmap(unitHeatmap, value, 9, u->GetPos());
+            else if(u->GetType() == ObjectType::RAM)
+                value += -3.f;
+            else
+                value += GameConstants::GetUnitPrice(u->GetType()) / 50.f;
+            int enemyRangeRadius = GameConstants::GetUnitRange(u->GetType()) + GameConstants::GetUnitBaseMoves(u->GetType()) - 1;
+            UpdateHeatmap(unitHeatmap, value, enemyRangeRadius, u->GetPos());
             if(d < std::min(std::min(15, map.GetDimensions().first), map.GetDimensions().second))
                 unitState = UnitState::DEFEND_BASE;
         }
@@ -179,11 +189,10 @@ void Player::GenerateHeatmaps() {
 void Player::UpdateHeatmap(std::vector<float>& heatmap, float value, int distance, Coords pos) {
     for(int i = -distance; i <= distance; i++) {
         for(int j = std::abs(i)-distance; j <= distance - std::abs(i); j++) {
-            float d = i != 0 || j != 0 ? std::abs(i) + std::abs(j) : 1.f;
             Coords c = {pos.first + i, pos.second + j};
             if(game.GetMap().IsInBounds(c)) {
                 int idx = game.GetMap().ConvertCoordsToIdx(c);
-                heatmap[idx] += value/d;
+                heatmap[idx] += value;
             }
         }
     }
@@ -228,7 +237,7 @@ std::vector<Coords> Player::FindPath(Coords start, Coords destination, int moveD
                     if(map.IsValidPlacement({c.first+i, c.second+j})) {
 
                         float cost = GameMap::Distance(c, {c.first+i, c.second+j})
-                                   + costs[currentNode.second].first + std::max(0.1f, costFunction(idxToCheck) + 5.f);
+                                   + costs[currentNode.second].first + std::max(0.1f, costFunction(idxToCheck) + 4.f);
                         float heur = GameMap::Distance({c.first+i, c.second+j}, destination);
                         
                         if(cost < costs[idxToCheck].first || costs[idxToCheck].second == -1) {
@@ -269,11 +278,14 @@ bool Player::CheckSurroundings(const Unit *unit)
     }
     if(closestEnemy == nullptr)
         return false;
-    auto avoid = [](Coords c, Coords target) {
-        return -2.f*GameMap::Distance(c, target);
+
+    auto map = game.GetMap();
+    const std::vector<float>& heatmap = unitHeatmap;
+    auto avoid = [map, heatmap](Coords c, Coords target) {
+        return -2.f*GameMap::Distance(c, target) + heatmap[map.ConvertCoordsToIdx(c)];
     };
-    auto engage = [unit](Coords c, Coords target) {
-        return GameMap::Distance(c, target) <= GameConstants::GetUnitRange(unit->GetType()) ? -10.f : 0.f;
+    auto engage = [unit, map, heatmap](Coords c, Coords target) {
+        return (GameMap::Distance(c, target) <= GameConstants::GetUnitRange(unit->GetType()) ? -10.f : 0.f) + heatmap[map.ConvertCoordsToIdx(c)];
     };
     if(unit->HasAttacked()) {
         MoveUnit(unit, closestEnemy->GetPos(), avoid);
