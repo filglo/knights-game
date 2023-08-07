@@ -16,6 +16,7 @@ Game::Game(const char* mapFilename, const char* statusP1, const char* statusP2)
     DeserializeGold(statusP2, 2);
 }
 
+// This method can invalidate GameObject*
 GameWinState Game::Turn() {
     // Destroy dead units
     for(size_t i = 0; i < objects.size(); i++) {
